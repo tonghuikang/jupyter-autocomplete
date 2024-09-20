@@ -1,2 +1,3 @@
-# jupyter-autocomplete
-Autocomplete your Jupyter notebook cell
+# Jupyter Autofill Chrome Extension
+
+You will need your OpenAI API for this.

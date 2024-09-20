@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Extension Settings</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    label { display: block; margin-bottom: 5px; }
+    input, select { width: 100%; padding: 8px; margin-bottom: 10px; }
+    button { padding: 10px 20px; }
+  </style>
+</head>
+<body>
+  <h2>Settings</h2>
+  <div>
+    <label for="apiKey">OpenAI API Key:</label>
+    <input type="text" id="apiKey" name="apiKey" />
+  </div>
+  <div>
+    <label for="model">Model:</label>
+    <input list="model-options" id="model" name="model" />
+    <datalist id="model-options">
+      <option value="o1-mini">
+      <option value="o1-preview">
+      <option value="gpt-4o">
+      <option value="gpt-4o-mini">
+    </datalist>
+    </select>
+  </div>
+  <button id="saveButton">Save</button>
+  <script src="options.js"></script>
+</body>
+</html>

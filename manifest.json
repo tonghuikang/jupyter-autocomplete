@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Jupyter Cell Filler",
+  "version": "1.0",
+  "description": "Calls an LLM to fill up the current cell.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "action": {},
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": ["*://*/*.ipynb"],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "execute-extension": {
+      "suggested_key": {
+        "default": "Ctrl+K",
+        "mac": "Command+K"
+      },
+      "description": "Fill the current cell with an LLM"
+    }
+  }
+}
