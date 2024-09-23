@@ -1,4 +1,6 @@
 async function injectedFunction(apiKey, model) {
+    // this function returns a string message
+    let message = '';
     console.log('running injectedFunction');
 
     if (!apiKey) {
@@ -26,9 +28,44 @@ async function injectedFunction(apiKey, model) {
     }
 
     const cellContent = selectedCell.get_text();
-    const notebookContent = Jupyter.notebook.toJSON();
-    const notebookString = JSON.stringify(notebookContent);
-    console.log('Notebook content as string:', notebookString);
+    let notebookContent = Jupyter.notebook.toJSON();
+    let notebookString = JSON.stringify(notebookContent);
+
+    const LENGTH_TO_ACTIVATE_TRUNCATION = 200000;
+    if (notebookString.length > LENGTH_TO_ACTIVATE_TRUNCATION) {
+        console.log('Inputs are truncated. Recommend notebook cleanup.');
+        message += 'Inputs are truncated. Recommend notebook cleanup. ';
+
+        function truncate(text, approximateLimit) {
+            if (text.length > approximateLimit + 100) {
+                const half = Math.floor((approximateLimit + 20) / 2);
+                return text.substring(0, half) + '...' + text.substring(text.length - half);
+            }
+            return text;
+        }
+
+        const numCells = Jupyter.notebook.ncells();
+        if (numCells > 0) {
+            const maxPerCell = Math.floor(LENGTH_TO_ACTIVATE_TRUNCATION / numCells);
+            console.log('maxPerCell', maxPerCell);
+
+            notebookContent.cells.forEach(cell => {
+                cell.source = truncate(cell.source, maxPerCell);
+                console.log('cell', cell.source);
+                console.log('cell', cell);
+                
+                if (Array.isArray(cell.outputs)) {
+                    cell.outputs.forEach(output => {
+                        output.text = truncate(output.text, maxPerCell);
+                        console.log('output', output.text);
+                    });
+                }
+            });
+        }
+
+        notebookString = JSON.stringify(notebookContent);
+        notebookString = truncate(notebookString, LENGTH_TO_ACTIVATE_TRUNCATION);        
+    }
 
     const data = {
         model: model,
@@ -39,12 +76,12 @@ async function injectedFunction(apiKey, model) {
                     "You will take the following notebook content as context: <notebook_context>" +
                     notebookString +
                     "</notebook_context>\n\n" +
-                    "This is the current cell information <current_cell_information>" +
+                    "This is the current cell content <current_cell_content>" +
                     cellContent +
-                    "</current_cell_information>\n\n" +
+                    "</current_cell_content>\n\n" +
                     "If there are errors, fix the current cell based on the errors. Otherwise follow the instructions in the current cell. " +
                     "The content from your reply will replace the content in the cell. " +
-                    "Make sure your response is executable python code. Explanation should be commented out. Do not include ```python and ```."
+                    "Make sure your response is executable python code. Explanation should be commented out. Never use ```python and ``` in your response."
             }
         ]
     };
@@ -82,22 +119,69 @@ async function injectedFunction(apiKey, model) {
     console.log('newCellContent', newCellContent);
 
     selectedCell.set_text(newCellContent);
-    console.log('Cell processed successfully.');
-    alert('Cell processed successfully.');
+    console.log('Cell successfully processed.');
+    message += 'Cell successfully processed. ';
+
+    const completionTokens = result.usage.completion_tokens;
+    const promptTokens = result.usage.prompt_tokens;
+
+    const modelPricesPerMillionTokens = {
+        'gpt-4o': { input: 5, output: 15 },
+        'gpt-4o-2024-08-06': { input: 2.5, output: 10 },
+        'gpt-4o-2024-05-13': { input: 5, output: 15 },
+        'gpt-4o-mini': { input: 0.15, output: 0.6 },
+        'chatgpt-4o-latest': { input: 5, output: 15 },
+        'o1-preview': { input: 15, output: 60 },
+        'o1-mini': { input: 3, output: 12 },
+    };
+
+    let costFormatted;
+    if (modelPricesPerMillionTokens.hasOwnProperty(model)) {
+        const prices = modelPricesPerMillionTokens[model];
+        const cost = (promptTokens / 1e6) * prices.input + (completionTokens / 1e6) * prices.output;
+        costFormatted = (cost * 100).toFixed(2);
+    } else {
+        costFormatted = 'unknown';
+    }
+
+    message += ' Estimated cost: ' + costFormatted + ' cents for ' + promptTokens + ' + ' + completionTokens + ' tokens.';
+    return message;
 }
 
 async function executeInjectedFunction(tab) {
     const data = await chrome.storage.sync.get(['apiKey', 'model']);
+    if (!data.apiKey || !data.model) {
+        chrome.runtime.openOptionsPage();
+        return;
+    }
     const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: injectedFunction,
         args: [data.apiKey, data.model],
         world: 'MAIN'
     });
-    if (results && results[0].result === "openOptionsPage") {
-        chrome.runtime.openOptionsPage();
+    console.log("injectedFunction results", results);
+    let message = '';
+    if (results && results[0] && results[0].result) {
+        message = results[0].result;
+    } else {
+        console.log("message is empty");
     }
-    console.log("Cell processing completed.");
+    if (message === "openOptionsPage") {
+        chrome.runtime.openOptionsPage();
+        return;
+    }
+    if (message) {
+        chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icons/icon128.png',
+            title: 'Success',
+            message: message,
+        });
+        console.log("Cell processing completed.");
+        return;
+    }
+    console.log("Invalid executeInjectedFunction outcome");
 }
 
 chrome.action.onClicked.addListener(async (tab) => {

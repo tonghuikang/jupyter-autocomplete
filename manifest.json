@@ -3,7 +3,10 @@
   "name": "Jupyter Cell Filler",
   "version": "1.0",
   "description": "Calls an LLM to fill up the current cell.",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "icons": {
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["activeTab", "scripting", "storage", "notifications"],
   "action": {},
   "background": {
     "service_worker": "background.js"
