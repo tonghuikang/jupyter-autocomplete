@@ -56,16 +56,22 @@ async function injectedFunction(apiKey, model) {
                 
                 if (Array.isArray(cell.outputs)) {
                     cell.outputs.forEach(output => {
-                        output.text = truncate(output.text, maxPerCell);
-                        console.log('output', output.text);
+                        if (output.text){
+                            output.text = truncate(output.text, maxPerCell);
+                            console.log('output', output.text);    
+                        }
+
+                        // remove images
+                        output.data = {}
                     });
                 }
             });
         }
 
         notebookString = JSON.stringify(notebookContent);
-        notebookString = truncate(notebookString, LENGTH_TO_ACTIVATE_TRUNCATION);        
+        notebookString = truncate(notebookString, LENGTH_TO_ACTIVATE_TRUNCATION);    
     }
+    console.log('notebookString', notebookString.length);
 
     const data = {
         model: model,
