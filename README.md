@@ -2,6 +2,10 @@
 
 You will need your OpenAI API key for this.
 
+This does not work with JupyterLab, and this only works with the classic Jupyter notebook.
+
+You will need to run `pip install nbclassic` and then `jupyter nbclassic`
+
 
 # Installation guide
 
